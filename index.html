@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Neonote</title>
+  <link rel="icon" type="image/svg+xml" href="neonote.svg">
+  <script>
+    async function loadApp() {
+      const appKey = 'neonotes-app-html';
+      const appUrl = 'app.html';
+      let html = localStorage.getItem(appKey);
+
+      // Try to fetch latest HTML if online
+      if (navigator.onLine) {
+        try {
+          const resp = await fetch(appUrl + '?v=' + Date.now());
+          if (resp.ok) {
+            html = await resp.text();
+            localStorage.setItem(appKey, html);
+          }
+        } catch (e) {
+          // Ignore fetch errors, fallback to localStorage
+        }
+      }
+
+      // Fallback to localStorage
+      if (html) {
+        document.open();
+        document.write(html);
+        document.close();
+      } else {
+        document.body.innerHTML = '<h2>App not available offline yet. Please connect to the internet and reload.</h2>';
+      }
+    }
+    loadApp();
+  </script>
+</head>
+<body>
+  <noscript>Please enable JavaScript to use Neonotes.</noscript>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(function(reg) {
+            // Registration successful
+          }, function(err) {
+            // Registration failed
+            console.error('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

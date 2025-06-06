@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Neonote</title>
+  <link rel="icon" type="image/svg+xml" href="neonote.svg">
+  <!-- Material Web Components CDN -->
+  <script type="module" src="https://unpkg.com/@material/web/all.js?module"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <!-- Add Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      background: #121212;
+      color: #fff;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      width: 100vw;
+    }
+    #sidebar {
+      width: 64px;
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
+      gap: 8px;
+      border-right: 1px solid #222;
+      height: 100vh;
+      position: relative;
+    }
+    #sidebar .note-tab {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5em;
+      cursor: pointer;
+      transition: background 0.2s;
+      box-sizing: border-box;
+    }
+    #sidebar .note-tab.active, #sidebar .note-tab:hover {
+      background: #333;
+    }
+    #sidebar .note-tab.add {
+      color: #90caf9;
+      font-size: 2em;
+      margin-bottom: 16px;
+    }
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 0;
+      background: #121212;
+      align-items: center;
+      justify-content: flex-start;
+      box-sizing: border-box;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .note-title-container {
+      width: 100%;
+      margin-top: 8px;
+      background: #1c1c1c;
+      border-radius: 18px;
+      box-shadow: 0 2px 8px #0002;
+      padding: 12px 6px 12px 10px;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      /* Prevent overflow behind sidebars */
+      max-width: 100%;
+    }
+    #note-title {
+      width: 100%;
+      font-size: 1.2em;
+      background: transparent;
+      border: none;
+      color: #fff;
+      padding: 6px 0;
+      outline: none;
+      font-weight: 500;
+    }
+    .note-content-container {
+      width: 100%;
+      margin-top: 8px;
+      background: #151516;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px #0001;
+      padding: 12px 6px 6px 10px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      box-sizing: border-box;
+      max-width: 100%;
+    }
+    #note-content, #markdown-content {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 1.1em;
+      padding: 0 0 0 0;
+      outline: none;
+      font-family: inherit;
+      line-height: 1.6;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      resize: none;
+      flex: 1;
+      min-height: 200px;
+    }
+    #markdown-content {
+      overflow-y: auto;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    /* Remove top margin from first child in markdown content */
+    #markdown-content > *:first-child {
+      margin-top: 0 !important;
+    }
+    /* Remove top margin from all paragraphs and headings in markdown content */
+    #markdown-content p,
+    #markdown-content h1,
+    #markdown-content h2,
+    #markdown-content h3,
+    #markdown-content h4,
+    #markdown-content h5,
+    #markdown-content h6 {
+      margin-top: 0;
+    }
+    #settings-bar {
+      width: 56px;
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      padding: 16px 0;
+      border-left: 1px solid #222;
+      height: 100vh;
+      position: relative;
+    }
+    .settings-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: none;
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6em;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .settings-icon:hover {
+      background: #333;
+    }
+    /* Material icon font fallback */
+    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+    .material-icons {
+      font-family: 'Material Icons';
+      font-style: normal;
+      font-weight: normal;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Hide scrollbars for cleaner look */
+    ::-webkit-scrollbar { width: 0 !important }
+    textarea::-webkit-scrollbar { width: 0 !important }
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    .note-menu {
+      position: fixed;
+      z-index: 10000 !important;
+      display: flex;
+      flex-direction: row;
+      background: #232323;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #0008;
+      padding: 4px 8px;
+      left: 60px;
+      min-width: 160px;
+      align-items: center;
+      gap: 8px;
+      top: 0;
+      animation: fadeIn 0.15s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px);}
+      to { opacity: 1; transform: none;}
+    }
+    .note-menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5em;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .note-menu-btn:disabled {
+      color: #bdbdbd;
+      cursor: not-allowed;
+    }
+    .note-menu-btn.trash {
+      color: #e53935;
+    }
+    .note-menu-btn.trash:disabled {
+      color: #bdbdbd !important;
+      background: none;
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .note-menu-btn.pin.active {
+      color: #ffd600;
+    }
+    .star-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: none;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .star-badge .material-icons {
+      font-size: 16px;
+      color: #ffd600;
+      filter: drop-shadow(0 0 2px #222);
+    }
+    #note-tabs {
+      position: relative;
+    }
+    .note-tab {
+      border: none !important;
+      box-sizing: border-box;
+      position: relative;
+      background: none;
+      z-index: 1;
+      transition: background 0.2s, border 0.2s;
+    }
+    .note-tab.active {
+      background: #333 !important;
+    }
+    .note-tab.starred {
+      border: 2px solid #fff !important;
+      box-sizing: border-box;
+    }
+    .note-tab.dragging {
+      animation: shake 0.3s infinite linear;
+      opacity: 0.7;
+      z-index: 10;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0) rotate(-2deg); }
+      20% { transform: translateX(-2px) rotate(2deg); }
+      40% { transform: translateX(2px) rotate(-2deg); }
+      60% { transform: translateX(-2px) rotate(2deg); }
+      80% { transform: translateX(2px) rotate(-2deg); }
+      100% { transform: translateX(0) rotate(-2deg); }
+    }
+    .drop-indicator,
+    .drop-indicator-bottom {
+      pointer-events: none !important;
+    }
+    .drop-indicator {
+      position: absolute;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: 0;
+      border-top: 3px solid #90caf9;
+      z-index: 100;
+      pointer-events: none;
+      margin: 0;
+      display: block;
+      cursor: inherit !important;
+      top: 0;
+    }
+    .drop-indicator-bottom {
+      border-top: none;
+      border-bottom: 3px solid #90caf9;
+      top: auto;
+      bottom: 0;
+    }
+    .palette-row {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+    }
+    .palette-color {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #fff3;
+      cursor: pointer;
+      transition: border 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 2px #0002;
+      outline: none;
+      background: none;
+    }
+    .palette-color.selected {
+      border: 2.5px solid #fff;
+      box-shadow: 0 0 0 2px #fff4;
+    }
+    .palette-picker {
+      width: 22px;
+      height: 22px;
+      border: none;
+      background: none;
+      padding: 0;
+      margin-left: 4px;
+      cursor: pointer;
+      position: relative;
+      outline: none;
+    }
+    .palette-picker-bg {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(.4,0,.2,1);
+      z-index: 0;
+    }
+    .palette-picker-bg.visible {
+      opacity: 1;
+    }
+    .palette-picker-icon {
+      font-family: 'Material Icons';
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: none;
+      outline: none;
+      position: relative;
+      z-index: 1;
+    }
+    .color-menu {
+      position: fixed;
+      z-index: 10001;
+      background: #232323;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #0008;
+      padding: 10px 12px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 120px;
+      align-items: center;
+      animation: fadeIn 0.15s;
+    }
+    #offline-indicator {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      position: static;
+      margin: 0 !important;
+      width: 40px;
+      height: 40px;
+    }
+    /* Sidebar divider */
+    .sidebar-divider {
+      width: 80%;
+      border: none;
+      border-top: 2px solid #fff;
+      margin: 8px 0 8px 0;
+      opacity: 0.2;
+    }
+    #sidebar {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      align-items: center;
+      background: #1a1a1a;
+    }
+    #note-tabs-scroll {
+      flex: 1 1 0;
+      width: 100%;
+      overflow-y: visible;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 0;
+      max-height: calc(100vh - 220px);
+    }
+    #note-tabs {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .sidebar-bottom-fixed {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #1a1a1a;
+      padding-bottom: 24px;
+      gap: 18px;
+      flex-shrink: 0;
+      margin-top: auto;
+    }
+    .sidebar-bottom-fixed > #offline-indicator {
+      margin: 0 !important;
+      position: static;
+    }
+    #sidebar-settings {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .note-tab-wrapper {
+      padding-bottom: 4px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    @media (max-width: 600px) {
+      #sidebar {
+        height: 100dvh;
+        min-height: 100dvh;
+        max-height: 100dvh;
+      }
+      .settings-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1.5em;
+      }
+      .sidebar-bottom-fixed {
+        padding-bottom: 22px;
+        gap: 12px;
+      }
+      #sidebar .note-tab {
+        width: 44px;
+        height: 44px;
+        font-size: 1.3em;
+      }
+      #sidebar .note-tab.add {
+        font-size: 1.8em;
+        margin-bottom: 12px;
+      }
+    }
+    :root {
+      --sidebar-height: 100vh;
+    }
+    @media (max-width: 600px) {
+      :root {
+        --sidebar-height: 100dvh;
+      }
+      #sidebar {
+        height: var(--sidebar-height);
+        min-height: var(--sidebar-height);
+        max-height: var(--sidebar-height);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar" style="position:relative;">
+    <button class="note-tab add" title="New Note" id="add-note-btn"><span class="material-icons">add</span></button>
+    <div id="note-tabs-scroll">
+      <div id="note-tabs"></div>
+    </div>
+    <div class="sidebar-bottom-fixed">
+      <hr class="sidebar-divider" />
+      <div id="sidebar-settings">
+        <button class="settings-icon" id="toggle-markdown" title="Toggle Markdown" style="color: #fff;"><span class="material-icons">code</span></button>
+        <button class="settings-icon" id="export-notes" title="Export notes"><span class="material-icons">file_download</span></button>
+        <button class="settings-icon" id="import-notes" title="Import notes"><span class="material-icons">file_upload</span></button>
+        <div id="offline-indicator" title="Offline mode">
+          <span class="material-icons" style="color:#e53935; font-size:28px;">wifi_off</span>
+        </div>
+        <input type="file" id="single-import-file" accept=".json" style="display:none"/>
+      </div>
+    </div>
+  </div>
+  <div id="main">
+    <div class="note-title-container">
+      <input id="note-title" placeholder="Title..." autocomplete="off" />
+    </div>
+    <div class="note-content-container">
+      <textarea id="note-content" placeholder="Start typing your note..." autofocus></textarea>
+      <!-- Markdown rendered content -->
+      <div id="markdown-content" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="note-menu-container"></div>
+  <div id="color-menu-container"></div>
+  <script>
+    // --- Storage Keys ---
+    const NOTES_KEY = 'neonotes-notes';
+    const SETTINGS_KEY = 'neonotes-settings';
+
+    // --- State ---
+    let notes = [];
+    let current = 0;
+    let settings = { darkMode: true, markdown: false };
+
+    // --- Load State ---
+    function loadNotes() {
+      notes = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+      if (!Array.isArray(notes) || notes.length === 0) {
+        notes = [{ title: 'Neonote v.1.2', content: 'localStorage based note-taking app with material based UI and markdown support.', starred: false }];
+      }
+      notes = notes.map(n => ({ ...n, color: n.color || '#fff' }));
+    }
+    function saveNotes() {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+    }
+    function loadSettings() {
+      settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"darkMode":true,"markdown":false}');
+    }
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    // --- Helper: sort notes with starred on top ---
+    function sortNotes() {
+      notes.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+    }
+
+    // --- Render Tabs ---
+    function renderTabs() {
+      sortNotes();
+      const tabs = document.getElementById('note-tabs');
+      tabs.innerHTML = '';
+      document.querySelectorAll('.drop-indicator').forEach(e => e.remove());
+
+      let dragSrcIdx = null;
+      let dragOverIdx = null;
+      // Find the boundary between starred and unstarred notes
+      const firstUnstarredIdx = notes.findIndex(n => !n.starred);
+      const lastStarredIdx = firstUnstarredIdx === -1 ? notes.length - 1 : firstUnstarredIdx - 1;
+
+      // --- Mobile drag/menu helpers ---
+      let touchTimer = null;
+      let touchStartY = null;
+      let touchStartX = null;
+      let touchMoved = false;
+      let touchDragStarted = false;
+      const DRAG_THRESHOLD = 18; // px
+      const MENU_DELAY = 400; // ms
+
+      notes.forEach((note, idx) => {
+        // Create wrapper div
+        const wrapper = document.createElement('div');
+        wrapper.className = 'note-tab-wrapper';
+        // Create note-tab button as before
+        const btn = document.createElement('button');
+        btn.className = 'note-tab' + (idx === current ? ' active' : '') + (note.starred ? ' starred' : '');
+        btn.title = note.title || 'Untitled';
+        btn.innerHTML = `
+          <span class="material-icons" style="color: ${note.color || '#fff'};">
+            ${idx === current ? 'description' : 'insert_drive_file'}
+          </span>
+        `;
+        btn.setAttribute('draggable', 'true');
+        btn.style.position = 'relative';
+
+        // --- Desktop drag logic ---
+        btn.ondragstart = (e) => {
+          if (window.matchMedia('(pointer: coarse)').matches) {
+            // Prevent default drag on mobile
+            e.preventDefault();
+            return false;
+          }
+          dragSrcIdx = idx;
+          btn.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', idx);
+        };
+        btn.ondragend = (e) => {
+          btn.classList.remove('dragging');
+          document.querySelectorAll('.drop-indicator').forEach(e => e.remove());
+          dragOverIdx = null;
+        };
+
+        // --- Mobile touch logic ---
+        btn.ontouchstart = (e) => {
+          if (!window.matchMedia('(pointer: coarse)').matches) return;
+          if (e.touches.length > 1) return; // ignore multi-touch
+          touchMoved = false;
+          touchDragStarted = false;
+          touchStartY = e.touches[0].clientY;
+          touchStartX = e.touches[0].clientX;
+          dragSrcIdx = idx;
+          // Track if menu was open for this note before drag
+          btn._menuWasOpen = (noteMenuIdx === idx);
+          // Start timer for menu
+          touchTimer = setTimeout(() => {
+            if (!touchMoved && !touchDragStarted) {
+              openNoteMenu(idx, btn);
+            }
+          }, MENU_DELAY);
+        };
+        btn.ontouchmove = (e) => {
+          if (!window.matchMedia('(pointer: coarse)').matches) return;
+          if (!touchStartY || !touchStartX) return;
+          const y = e.touches[0].clientY;
+          const x = e.touches[0].clientX;
+          const dy = Math.abs(y - touchStartY);
+          const dx = Math.abs(x - touchStartX);
+          if ((dy > DRAG_THRESHOLD || dx > DRAG_THRESHOLD) && !touchDragStarted) {
+            // Cancel menu timer
+            clearTimeout(touchTimer);
+            touchMoved = true;
+            touchDragStarted = true;
+            closeNoteMenu();
+            btn.classList.add('dragging');
+            // --- Improved drag logic ---
+            const moveHandler = (ev) => {
+              const touch = ev.touches[0];
+              const children = Array.from(tabs.children);
+              let dropIdx = null;
+              if (children.length > 0) {
+                const firstRect = children[0].getBoundingClientRect();
+                const lastRect = children[children.length - 1].getBoundingClientRect();
+                // Calculate dropIdx using half-note logic
+                if (touch.clientY < firstRect.top) {
+                  dropIdx = 0;
+                } else if (touch.clientY > lastRect.bottom) {
+                  dropIdx = notes.length;
+                } else {
+                  for (let i = 0; i < children.length; i++) {
+                    const rect = children[i].getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (touch.clientY < midY) {
+                      dropIdx = i;
+                      break;
+                    } else if (touch.clientY >= midY && touch.clientY <= rect.bottom) {
+                      dropIdx = i + 1;
+                      break;
+                    }
+                  }
+                  if (dropIdx === null) dropIdx = notes.length;
+                }
+                // Validate drop for pinned/unpinned
+                const draggingStarred = notes[dragSrcIdx]?.starred;
+                let validDrop = false;
+                if (draggingStarred) {
+                  validDrop = dropIdx <= lastStarredIdx + 1;
+                } else {
+                  validDrop = dropIdx >= firstUnstarredIdx || dropIdx === lastStarredIdx + 1;
+                }
+                if (!validDrop) dropIdx = null;
+                dragOverIdx = dropIdx;
+                // Remove all indicators (in case any remain)
+                document.querySelectorAll('.drop-indicator').forEach(e => e.remove());
+                // Do NOT show indicator on mobile
+                // (No indicator creation here)
+              }
+            };
+            const endHandler = (ev) => {
+              btn.classList.remove('dragging');
+              document.querySelectorAll('.drop-indicator').forEach(e => e.remove());
+              document.removeEventListener('touchmove', moveHandler);
+              document.removeEventListener('touchend', endHandler);
+              document.removeEventListener('touchcancel', endHandler);
+              if (dragOverIdx !== null && dragSrcIdx !== null && dragOverIdx !== dragSrcIdx) {
+                const from = dragSrcIdx;
+                const to = dragOverIdx;
+                const draggingStarred = notes[from]?.starred;
+                if (draggingStarred && (to > lastStarredIdx + 1)) return;
+                if (!draggingStarred && (to < firstUnstarredIdx && to !== lastStarredIdx + 1)) return;
+                const [moved] = notes.splice(from, 1);
+                let insertAt = to;
+                if (from < to) insertAt--;
+                notes.splice(insertAt, 0, moved);
+                if (current === from) {
+                  current = insertAt;
+                } else if (current > from && current <= insertAt) {
+                  current--;
+                } else if (current < from && current >= insertAt) {
+                  current++;
+                }
+                saveNotes();
+                renderTabs();
+                renderNote();
+                // Reopen menu if it was open for this note before drag
+                if (btn._menuWasOpen) {
+                  setTimeout(() => {
+                    // Find the new button for the note (may have moved)
+                    const newBtn = document.querySelectorAll('.note-tab')[insertAt];
+                    if (newBtn) openNoteMenu(insertAt, newBtn);
+                  }, 0);
+                }
+              }
+              dragSrcIdx = null;
+              dragOverIdx = null;
+              touchStartY = null;
+              touchStartX = null;
+              touchMoved = false;
+              touchDragStarted = false;
+            };
+            document.addEventListener('touchmove', moveHandler);
+            document.addEventListener('touchend', endHandler);
+            document.addEventListener('touchcancel', endHandler);
+          }
+        };
+        btn.ontouchend = (e) => {
+          if (!window.matchMedia('(pointer: coarse)').matches) return;
+          clearTimeout(touchTimer);
+          touchStartY = null;
+          touchStartX = null;
+          // If not dragging or long-pressing, treat as tap to switch note
+          if (!touchMoved && !touchDragStarted) {
+            saveCurrentNote();
+            current = idx;
+            renderTabs();
+            renderNote();
+            closeNoteMenu();
+          }
+          touchMoved = false;
+          touchDragStarted = false;
+        };
+        btn.ontouchcancel = btn.ontouchend;
+
+        // --- Drag logic for wrapper (so padding is also a drop target) ---
+        const dragHandlers = {
+          dragover: btn.ondragover = (e) => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            let indicators = Array.from(btn.querySelectorAll('.drop-indicator, .drop-indicator-bottom'));
+            indicators.forEach(ind => ind.remove());
+            const rect = btn.getBoundingClientRect();
+            const offset = e.clientY - rect.top;
+            const draggingStarred = notes[dragSrcIdx]?.starred;
+            let validDrop = false;
+            if (draggingStarred) {
+              if (offset < rect.height / 2) {
+                validDrop = idx <= lastStarredIdx + 1;
+              } else {
+                validDrop = idx < lastStarredIdx + 1;
+              }
+            } else {
+              if (offset < rect.height / 2) {
+                validDrop = idx >= firstUnstarredIdx || idx === lastStarredIdx;
+              } else {
+                validDrop = idx >= firstUnstarredIdx - 1 || idx === lastStarredIdx;
+              }
+            }
+            if (!validDrop) {
+              dragOverIdx = null;
+              return;
+            }
+            if (offset < rect.height / 2) {
+              if (!btn.querySelector('.drop-indicator')) {
+                const indicator = document.createElement('div');
+                indicator.className = 'drop-indicator';
+                btn.insertBefore(indicator, btn.firstChild);
+              }
+              dragOverIdx = idx;
+            } else {
+              if (!btn.querySelector('.drop-indicator-bottom')) {
+                const indicator = document.createElement('div');
+                indicator.className = 'drop-indicator drop-indicator-bottom';
+                btn.appendChild(indicator);
+              }
+              dragOverIdx = idx + 1;
+            }
+          },
+          dragenter: btn.ondragenter = (e) => { if (!window.matchMedia('(pointer: coarse)').matches) e.preventDefault(); },
+          dragleave: btn.ondragleave = (e) => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+            if (e.relatedTarget && !btn.contains(e.relatedTarget)) {
+              document.querySelectorAll('.drop-indicator').forEach(e => e.remove());
+              dragOverIdx = null;
+            }
+          },
+          drop: btn.ondrop = (e) => {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+            e.preventDefault();
+            const from = dragSrcIdx;
+            const to = dragOverIdx;
+            dragOverIdx = null;
+            if (from === null || to === null || from === to) {
+              renderTabs();
+              return;
+            }
+            const draggingStarred = notes[from]?.starred;
+            if (draggingStarred && (to > lastStarredIdx + 1)) {
+              renderTabs();
+              return;
+            }
+            if (!draggingStarred && (to < firstUnstarredIdx && to !== lastStarredIdx + 1)) {
+              renderTabs();
+              return;
+            }
+            if (from !== null && to !== null && from !== to) {
+              const [moved] = notes.splice(from, 1);
+              let insertAt = to;
+              if (from < to) insertAt--;
+              notes.splice(insertAt, 0, moved);
+              if (current === from) {
+                current = insertAt;
+              } else if (current > from && current <= insertAt) {
+                current--;
+              } else if (current < from && current >= insertAt) {
+                current++;
+              }
+              saveNotes();
+              renderTabs();
+              renderNote();
+            } else {
+              renderTabs();
+            }
+          }
+        };
+        // Attach drag handlers to wrapper as well
+        wrapper.ondragover = dragHandlers.dragover;
+        wrapper.ondragenter = dragHandlers.dragenter;
+        wrapper.ondragleave = dragHandlers.dragleave;
+        wrapper.ondrop = dragHandlers.drop;
+
+        // --- End drag logic ---
+        btn.onclick = () => {
+          saveCurrentNote();
+          current = idx;
+          renderTabs();
+          renderNote();
+          closeNoteMenu();
+        };
+        btn.oncontextmenu = (e) => {
+          e.preventDefault();
+          openNoteMenu(idx, btn);
+        };
+        wrapper.appendChild(btn);
+        tabs.appendChild(wrapper);
+      });
+    }
+
+    function renderNote() {
+      const note = notes[current];
+      document.getElementById('note-title').value = note.title || '';
+      document.getElementById('note-content').value = note.content || '';
+      // Markdown rendering logic
+      const markdownEnabled = settings.markdown;
+      const textarea = document.getElementById('note-content');
+      const mdDiv = document.getElementById('markdown-content');
+      if (markdownEnabled) {
+        textarea.style.display = 'none';
+        mdDiv.style.display = 'block';
+        mdDiv.innerHTML = marked.parse(note.content || '');
+      } else {
+        textarea.style.display = 'block';
+        mdDiv.style.display = 'none';
+      }
+    }
+
+    function saveCurrentNote() {
+      notes[current].title = document.getElementById('note-title').value;
+      notes[current].content = document.getElementById('note-content').value;
+      saveNotes();
+    }
+
+    function applyDarkMode() {
+      document.body.style.background = '#121212';
+      document.body.style.color = '#fff';
+      document.documentElement.style.setProperty('--md-sys-color-background', '#121212');
+      document.documentElement.style.setProperty('--md-sys-color-on-background', '#fff');
+    }
+
+    // --- Event Listeners ---
+    document.getElementById('add-note-btn').onclick = () => {
+      saveCurrentNote();
+      notes.unshift({ title: '', content: '', starred: false, color: '#fff' });
+      current = 0;
+      saveNotes();
+      renderTabs();
+      renderNote();
+    };
+
+    document.getElementById('note-title').addEventListener('input', () => {
+      saveCurrentNote();
+      renderTabs();
+    });
+    document.getElementById('note-content').addEventListener('input', () => {
+      saveCurrentNote();
+      if (settings.markdown) renderNote();
+    });
+
+    document.getElementById('export-notes').onclick = () => {
+      saveCurrentNote();
+      const data = JSON.stringify({ notes, settings });
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'neonotes-backup.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('import-notes').onclick = () => {
+      document.getElementById('single-import-file').click();
+    };
+    document.getElementById('single-import-file').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          if (typeof data === 'object') {
+            notes[current].title = data.title || '';
+            notes[current].content = data.content || '';
+            notes[current].starred = !!data.starred;
+            saveNotes();
+            renderTabs();
+            renderNote();
+          }
+        } catch {}
+        closeNoteMenu();
+      };
+      reader.readAsText(file);
+    };
+
+    // --- Note Menu Logic ---
+    let noteMenuIdx = null;
+    let lastMenuIdx = null; // Track last menu idx for mobile drag
+    function openNoteMenu(idx, btn) {
+      if (noteMenuIdx === idx) return; // Prevent stutter/double open
+      closeNoteMenu();
+      noteMenuIdx = idx;
+      lastMenuIdx = idx;
+      const note = notes[idx];
+
+      // --- Main menu (Delete, Pin, Export, Import) ---
+      const menu = document.createElement('div');
+      menu.className = 'note-menu';
+      const rect = btn.getBoundingClientRect();
+      menu.style.top = (rect.top + rect.height/2 - 20) + 'px';
+      menu.style.left = (rect.right + 8) + 'px';
+
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.className = 'note-menu-btn trash';
+      delBtn.title = 'Delete';
+      delBtn.innerHTML = '<span class="material-icons">delete</span>';
+      delBtn.disabled = !!note.starred;
+      delBtn.onclick = () => {
+        if (!note.starred) {
+          notes.splice(idx, 1);
+          if (notes.length === 0) {
+            notes.push({ title: '', content: '', starred: false, color: '#fff' });
+            current = 0;
+          } else if (current >= notes.length) {
+            current = notes.length - 1;
+          }
+          saveNotes();
+          renderTabs();
+          renderNote();
+          closeNoteMenu();
+        }
+      };
+
+      // Pin button (was star)
+      const pinBtn = document.createElement('button');
+      pinBtn.className = 'note-menu-btn pin' + (note.starred ? ' active' : '');
+      pinBtn.title = note.starred ? 'Unpin' : 'Pin';
+      pinBtn.innerHTML = '<span class="material-icons">push_pin</span>';
+      pinBtn.onclick = () => {
+        note.starred = !note.starred;
+        saveNotes();
+        renderTabs();
+        renderNote();
+        closeNoteMenu();
+      };
+
+      // Export button
+      const exportBtn = document.createElement('button');
+      exportBtn.className = 'note-menu-btn';
+      exportBtn.title = 'Export this note';
+      exportBtn.innerHTML = '<span class="material-icons">file_download</span>';
+      exportBtn.onclick = () => {
+        const data = JSON.stringify(note);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (note.title || 'note') + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        closeNoteMenu();
+      };
+
+      // Import button
+      const importBtn = document.createElement('button');
+      importBtn.className = 'note-menu-btn';
+      importBtn.title = 'Import to this note';
+      importBtn.innerHTML = '<span class="material-icons">file_upload</span>';
+      importBtn.onclick = () => {
+        document.getElementById('single-import-file').onchange = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const data = JSON.parse(evt.target.result);
+              if (typeof data === 'object') {
+                notes[idx].title = data.title || '';
+                notes[idx].content = data.content || '';
+                notes[idx].starred = !!data.starred;
+                saveNotes();
+                renderTabs();
+                renderNote();
+              }
+            } catch {}
+            closeNoteMenu();
+          };
+          reader.readAsText(file);
+        };
+        document.getElementById('single-import-file').click();
+      };
+
+      menu.appendChild(delBtn);
+      menu.appendChild(pinBtn);
+      menu.appendChild(exportBtn);
+      menu.appendChild(importBtn);
+
+      document.getElementById('note-menu-container').innerHTML = '';
+      document.getElementById('note-menu-container').appendChild(menu);
+
+      // --- Color palette menu ---
+      const pastelColors = [
+        '#90caf9', '#a5d6a7', '#fff59d', '#ffcc80', '#f48fb1',
+        '#ce93d8', '#b0bec5', '#ffd180', '#c5e1a5', '#b2dfdb'
+      ];
+
+      const colorMenu = document.createElement('div');
+      colorMenu.className = 'color-menu';
+
+      // Split into two rows
+      const row1 = document.createElement('div');
+      row1.className = 'palette-row';
+      const row2 = document.createElement('div');
+      row2.className = 'palette-row';
+
+      pastelColors.slice(0, 5).forEach(color => {
+        const swatch = document.createElement('button');
+        swatch.className = 'palette-color';
+        swatch.style.background = color;
+        // After adding to DOM, compare computed style to note.color
+        setTimeout(() => {
+          if (colorsMatch(window.getComputedStyle(swatch).backgroundColor, note.color)) {
+            swatch.classList.add('selected');
+          }
+        }, 0);
+        swatch.onclick = (e) => {
+          e.stopPropagation();
+          note.color = color;
+          saveNotes();
+          renderTabs();
+          // Update all swatches in the color menu
+          const colorMenu = document.querySelector('.color-menu');
+          if (colorMenu) {
+            colorMenu.querySelectorAll('.palette-color').forEach(s => {
+              s.classList.toggle('selected', colorsMatch(window.getComputedStyle(s).backgroundColor, note.color));
+            });
+            // Also update the color picker value if present
+            const pickerInput = colorMenu.querySelector('.palette-picker input[type="color"]');
+            if (pickerInput) pickerInput.value = note.color;
+            // Update icon color
+            const icon = colorMenu.querySelector('.palette-picker-icon');
+            if (icon) icon.style.color = note.color;
+            // Update palette icon background
+            const bgCircle = colorMenu.querySelector('.palette-picker-bg');
+            if (bgCircle) updateBgCircle(note.color);
+          }
+        };
+        row1.appendChild(swatch);
+      });
+      pastelColors.slice(5).forEach(color => {
+        const swatch = document.createElement('button');
+        swatch.className = 'palette-color';
+        swatch.style.background = color;
+        // After adding to DOM, compare computed style to note.color
+        setTimeout(() => {
+          if (colorsMatch(window.getComputedStyle(swatch).backgroundColor, note.color)) {
+            swatch.classList.add('selected');
+          }
+        }, 0);
+        swatch.onclick = (e) => {
+          e.stopPropagation();
+          note.color = color;
+          saveNotes();
+          renderTabs();
+          // Update all swatches in the color menu
+          const colorMenu = document.querySelector('.color-menu');
+          if (colorMenu) {
+            colorMenu.querySelectorAll('.palette-color').forEach(s => {
+              s.classList.toggle('selected', colorsMatch(window.getComputedStyle(s).backgroundColor, note.color));
+            });
+            // Also update the color picker value if present
+            const pickerInput = colorMenu.querySelector('.palette-picker input[type="color"]');
+            if (pickerInput) pickerInput.value = note.color;
+            // Update icon color
+            const icon = colorMenu.querySelector('.palette-picker-icon');
+            if (icon) icon.style.color = note.color;
+            // Update palette icon background
+            const bgCircle = colorMenu.querySelector('.palette-picker-bg');
+            if (bgCircle) updateBgCircle(note.color);
+          }
+        };
+        row2.appendChild(swatch);
+      });
+
+      // Palette icon button and hidden color input
+      const pickerBtn = document.createElement('button');
+      pickerBtn.className = 'palette-picker';
+      pickerBtn.title = 'Custom color';
+      pickerBtn.type = 'button';
+      pickerBtn.tabIndex = 0;
+      // White circle background
+      const bgCircle = document.createElement('div');
+      bgCircle.className = 'palette-picker-bg';
+      pickerBtn.appendChild(bgCircle);
+      // Icon
+      const icon = document.createElement('span');
+      icon.className = 'material-icons palette-picker-icon';
+      icon.textContent = 'palette';
+      icon.style.color = note.color || '#fff';
+      pickerBtn.appendChild(icon);
+      // Hidden color input
+      const pickerInput = document.createElement('input');
+      pickerInput.type = 'color';
+      pickerInput.value = note.color || '#fff';
+      pickerInput.tabIndex = -1;
+      pickerInput.style.opacity = 0;
+      pickerInput.style.position = 'absolute';
+      pickerInput.style.pointerEvents = 'none';
+      pickerInput.style.width = '0';
+      pickerInput.style.height = '0';
+      // Helper: show white circle only if all RGB values are below 128
+      function isVeryDarkColor(hex) {
+        let c = hex;
+        if (c.startsWith('#')) c = c.substring(1);
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const r = parseInt(c.substring(0,2),16);
+        const g = parseInt(c.substring(2,4),16);
+        const b = parseInt(c.substring(4,6),16);
+        return r < 128 && g < 128 && b < 128;
+      }
+      function updateBgCircle(color) {
+        if (isVeryDarkColor(color)) {
+          bgCircle.classList.add('visible');
+        } else {
+          bgCircle.classList.remove('visible');
+        }
+      }
+      updateBgCircle(note.color || '#fff');
+      const updateColorLive = (e) => {
+        icon.style.color = e.target.value;
+        updateBgCircle(e.target.value);
+      };
+      pickerInput.oninput = (e) => {
+        updateColorLive(e);
+        note.color = e.target.value;
+        saveNotes();
+        renderTabs();
+      };
+      pickerInput.onchange = updateColorLive;
+      pickerBtn.onclick = (e) => {
+        pickerInput.style.pointerEvents = 'auto';
+        pickerInput.style.width = '100%';
+        pickerInput.style.height = '100%';
+        pickerInput.click();
+        setTimeout(() => {
+          pickerInput.style.pointerEvents = 'none';
+          pickerInput.style.width = '0';
+          pickerInput.style.height = '0';
+        }, 500);
+      };
+      pickerBtn.appendChild(pickerInput);
+      row2.appendChild(pickerBtn);
+
+      colorMenu.appendChild(row1);
+      colorMenu.appendChild(row2);
+
+      // Position color menu below the main menu
+      setTimeout(() => {
+        const menuRect = menu.getBoundingClientRect();
+        colorMenu.style.left = menuRect.left + 'px';
+        colorMenu.style.top = (menuRect.bottom + 16) + 'px';
+        document.getElementById('color-menu-container').innerHTML = '';
+        document.getElementById('color-menu-container').appendChild(colorMenu);
+      }, 0);
+
+      // After appending colorMenu to the DOM:
+      setTimeout(() => {
+        const colorMenu = document.querySelector('.color-menu');
+        if (colorMenu) {
+          colorMenu.querySelectorAll('.palette-color').forEach(s => {
+            s.classList.toggle('selected', colorsMatch(window.getComputedStyle(s).backgroundColor, note.color));
+          });
+        }
+      }, 0);
+
+      // --- Close both menus on click outside ---
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleMenuOutsideClick);
+      }, 0);
+    }
+    function closeNoteMenu() {
+      noteMenuIdx = null;
+      document.getElementById('note-menu-container').innerHTML = '';
+      document.getElementById('color-menu-container').innerHTML = '';
+      document.removeEventListener('mousedown', handleMenuOutsideClick);
+    }
+    function handleMenuOutsideClick(e) {
+      const menu = document.querySelector('.note-menu');
+      const colorMenu = document.querySelector('.color-menu');
+      if (
+        (menu && menu.contains(e.target)) ||
+        (colorMenu && colorMenu.contains(e.target))
+      ) {
+        return; // Clicked inside one of the menus, do nothing
+      }
+      closeNoteMenu();
+    }
+
+    function colorsMatch(swatchColor, noteColor) {
+      // swatchColor: from getComputedStyle(s).backgroundColor (rgb)
+      // noteColor: hex (e.g. "#90caf9") or rgb
+      function hexToRgb(hex) {
+        if (!hex.startsWith('#')) return hex;
+        let c = hex.substring(1);
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const num = parseInt(c, 16);
+        return `rgb(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255})`;
+      }
+      // Lowercase for comparison
+      return swatchColor.toLowerCase() === hexToRgb(noteColor).toLowerCase();
+    }
+
+    async function updateOfflineIndicator() {
+      const indicator = document.getElementById('offline-indicator');
+      const online = navigator.onLine;
+      let serverReachable = false;
+      if (online) {
+        serverReachable = await checkServerReachable();
+      }
+      if (!online || !serverReachable) {
+        indicator.style.display = 'flex';
+      } else {
+        indicator.style.display = 'none';
+      }
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateOfflineIndicator);
+    window.addEventListener('offline', updateOfflineIndicator);
+    setInterval(updateOfflineIndicator, 10000); // check every 10 seconds
+    updateOfflineIndicator(); // initial check
+
+    // --- Initial Load ---
+    loadNotes();
+    loadSettings();
+    renderTabs();
+    renderNote();
+    applyDarkMode();
+
+    // Auto-save on page unload
+    window.addEventListener('beforeunload', saveCurrentNote);
+
+    async function checkServerReachable() {
+      try {
+        // Use a resource that should always be available
+        const resp = await fetch('app.html', {cache: 'no-store', method: 'HEAD'});
+        return resp.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    // Markdown toggle button logic
+    const markdownBtn = document.getElementById('toggle-markdown');
+    function updateMarkdownBtn() {
+      if (settings.markdown) {
+        markdownBtn.style.color = '#42a5f5'; // blue when enabled
+      } else {
+        markdownBtn.style.color = '#fff'; // white when disabled
+      }
+    }
+    markdownBtn.onclick = () => {
+      settings.markdown = !settings.markdown;
+      saveSettings();
+      updateMarkdownBtn();
+      renderNote();
+    };
+    updateMarkdownBtn();
+  </script>
+</body>
+</html>
