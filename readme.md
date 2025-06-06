@@ -1,6 +1,6 @@
 # Neonote `1.2`
 
-<img src="neonote.svg" alt="Neonote logo" width="96" height="96">
+<a href="https://note.krwclassic.com"><img src="neonote.svg" alt="Neonote logo" width="96" height="96"></a>
 
 **Neonote** is a modern, offline-first, Material 3-inspired note-taking app for web and mobile browsers. It is designed for speed, privacy, and a beautiful, distraction-free experience.
 
